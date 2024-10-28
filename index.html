@@ -1,0 +1,170 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css">
+ <title>Air Quality Monitoring</title>
+</head>
+<body>
+    <div class="container">
+        <!-- Title -->
+        <h1>Air Quality <span>Monitoring</span></h1>
+
+        <!-- Data Section -->
+        <div class="data-section">
+            <!-- Left Column with Toggle Switches and Info Box -->
+            <div class="left-column">
+                <!-- Toggle Switches -->
+                <div class="switch-group">
+                    <div class="toggle-switch" onclick="toggleSwitch(this)">
+                        <div class="switch"></div>
+                        <span>Humidifier</span>
+                    </div>
+                    <div class="toggle-switch" onclick="toggleSwitch(this)">
+                        <div class="switch active"></div>
+                        <span>Exhaust</span>
+                    </div>
+                </div>
+
+                <!-- Info Box -->
+                <div class="info-box">
+                    <div class="info-item"><span id="temp">0</span> TEMP</div>
+                    <div class="info-item"><span id="hum">0</span>HUMID</div>
+                    <div class="info-item"><span id="voc">0</span> TVOC</div>
+                </div>
+
+                <!-- Air Quality Status -->
+                <div class="status">
+                    <div class="status-indicator"></div>
+                    <p>Air Quality Status:&nbsp;</p>
+                    <p>Good</p>
+
+                </div>
+            </div>
+
+            <!-- ApexCharts Chart -->
+             <div class="chart-section">
+                <div id="chart"></div> <!-- graph-->
+                <div class="legend">
+                    <div>
+                        <div class="legend-status">Good</div>
+                        <div class="legend-status">Moderate</div>
+                        <div class="legend-status">Bad</div>
+                        <div class="legend-status">High</div>
+                        <div class="legend-status">Dangerous</div>
+                    </div>
+                </div>
+             </div>
+        </div>
+    </div>
+
+    <!-- ApexCharts CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <script>
+    // Toggle switch functionality
+    function toggleSwitch(element) {
+        const switchElement = element.querySelector(".switch");
+        switchElement.classList.toggle("active");
+    }
+    
+         var options = {
+            chart: {
+                type: 'bar',
+                height: 300,
+                width: '100%',
+                toolbar: { show: false }
+            },
+            series: [{
+                name: 'Air Quality Index',
+                data: [10, 20, 35]
+            }],
+            xaxis: {
+                categories: ['temperature', 'humidity', 'TVOC']
+            },
+            colors: ['#7b42f5', '#b480f5', '#d6b9ff'],
+            plotOptions: {
+                bar: {
+                    horizontal: false,
+                    columnWidth: '55%',
+                    endingShape: 'rounded'
+                },
+            },
+            dataLabels: { enabled: false },
+            title: {
+                text: 'Air Quality Levels',
+                align: 'center',
+                style: { fontSize: '18px', color: '#7b42f5' }
+            }
+        };
+
+    // Function to determine bar color based on value
+    function getVOCColor(value) {
+        if (value > 60) return '#ff544e';  // Red for poor
+        if (value > 40) return '#753885';  // Purple for high
+        if (value > 20) return '#eca067';  // Orange for moderate
+        if (value > 10) return '#f3cd51';  // Yellow for low
+        return '#50a46c';  // Green for good
+    }
+
+    function getHUMIDColor(value) {
+        if (value > 80) return '#eca067';  // Orange for high
+        if (value > 60) return '#f3cd51';  // Yellow for moderate
+        return '#50a46c';  // Green for good
+    }
+
+    function getTEMPColor(value) {
+        if (value > 64) return '#ff544e';  // Red for high
+        if (value > 57) return '#753885';  // Purple for moderate
+        if (value > 53) return '#eca067';  // Orange for warm
+        if (value > 43) return '#f3cd51';  // Yellow for mild
+        return '#50a46c';  // Green for normal
+    }
+
+    // Render the chart
+    var chart = new ApexCharts(document.querySelector("#chart"), options);
+    chart.render();
+
+    // Function to fetch data from the server and update chart
+    function getData() {
+        var xhttp = new XMLHttpRequest();
+        xhttp.onreadystatechange = function() {
+            if (this.readyState == 4) {
+                if (this.status == 200) {
+                    var data = JSON.parse(this.responseText);
+                    console.log("Data received:", data);  // Log the received data
+                    document.getElementById("temp").innerHTML = data.temperature + " °C";
+                    document.getElementById("hum").innerHTML = data.humidity + " %";
+                    document.getElementById("voc").innerHTML = data.tvoc + " ppb";
+                    document.getElementById("quality-status").innerHTML = data.quality_status;
+
+                    // Update the chart with new data
+                    chart.updateSeries([{
+                    name: 'Air Quality Index',
+                    data: [
+                        { x: 'Temperature (°C)', y: data.temp_percent, fillColor: getTEMPColor(data.temp_percent) },
+                        { x: 'Humidity (%)', y: data.humid_percent, fillColor: getHUMIDColor(data.humid_percent) },
+                        { x: 'TVOC (ppb)', y: data.tvoc_percent, fillColor: getVOCColor(data.tvoc_percent) }
+                    ]
+                  }]);
+
+                    // Update air quality status indicator color
+                    document.querySelector(".status-indicator").style.backgroundColor = data.ledstate;
+                } else {
+                    console.error('Error fetching data:', this.status);  // Log errors
+                }
+            }
+        };
+        xhttp.open("GET", "/readings", true);
+        xhttp.send();
+    }
+
+    // Call getData every 2 seconds
+    setInterval(getData, 2000);
+
+</script>
+
+</body>
+</html>
+
